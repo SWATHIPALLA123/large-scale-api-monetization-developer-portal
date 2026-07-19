@@ -1,16 +1,72 @@
-postgres:
-  image: postgres:17
-  container_name: postgres
-  environment:
-    POSTGRES_DB: api_monetization
-    POSTGRES_USER: postgres
-    POSTGRES_PASSWORD: Nani123@
-  ports:
-    - "5432:5432"
-  volumes:
-    - postgres_data:/var/lib/postgresql/data
-  healthcheck:
-    test: ["CMD-SHELL", "pg_isready -U postgres -d api_monetization"]
-    interval: 10s
-    timeout: 5s
-    retries: 10
+services:
+
+  postgres:
+    image: postgres:17
+    container_name: postgres
+    environment:
+      POSTGRES_DB: api_monetization
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: Nani123@
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d api_monetization"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  service-registry:
+    build: ./service-registry (1)/service-registry
+    container_name: service-registry
+    ports:
+      - "8761:8761"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  auth-service:
+    build: ./auth-service/auth-service
+    container_name: auth-service
+    ports:
+      - "8081:8081"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      service-registry:
+        condition: service_started
+
+  developer-service:
+    build: ./developer-service/developer-service
+    container_name: developer-service
+    ports:
+      - "8082:8082"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      service-registry:
+        condition: service_started
+
+  analytics-service:
+    build: ./analytics-service/analytics-service
+    container_name: analytics-service
+    ports:
+      - "8083:8083"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      service-registry:
+        condition: service_started
+
+  api-gateway:
+    build: ./api-gateway/api-gateway
+    container_name: api-gateway
+    ports:
+      - "8080:8080"
+    depends_on:
+      service-registry:
+        condition: service_started
+
+volumes:
+  postgres_data:
